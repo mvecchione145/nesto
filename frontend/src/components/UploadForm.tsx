@@ -105,7 +105,9 @@ export const UploadForm: React.FC<Props> = ({ onUploaded }) => {
                 key={s}
                 role="option"
                 aria-selected={highlight === i}
-                className={"suggestion-item" + (highlight === i ? " highlight" : "")}
+                className={
+                  "suggestion-item" + (highlight === i ? " highlight" : "")
+                }
                 onMouseDown={() => choose(s)}
               >
                 {s}

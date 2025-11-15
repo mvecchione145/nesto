@@ -21,13 +21,18 @@ const UploadPage: React.FC = () => {
           <strong>Uploaded:</strong>
           <div>{lastUploaded.original_filename}</div>
           <div style={{ marginTop: 8 }}>
-            <a href={photoImageUrl(lastUploaded)} target="_blank" rel="noreferrer">
+            <a
+              href={photoImageUrl(lastUploaded)}
+              target="_blank"
+              rel="noreferrer"
+            >
               Open file
-            </a>
-            {' '}
-            —
-            {' '}
-            <a href={photoImageUrl(lastUploaded)} download={lastUploaded.original_filename}>
+            </a>{" "}
+            —{" "}
+            <a
+              href={photoImageUrl(lastUploaded)}
+              download={lastUploaded.original_filename}
+            >
               Download
             </a>
           </div>

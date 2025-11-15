@@ -1,7 +1,8 @@
 // prefer a build-time Vite variable VITE_API_URL; fall back to localhost:8000 for
 // local dev. When building the frontend image in Docker Compose we pass the
 // backend address as a build-arg so this value is compiled into the bundle.
-const API_BASE = (import.meta as any)?.env?.VITE_API_URL ?? "http://localhost:8000";
+const API_BASE =
+  (import.meta as any)?.env?.VITE_API_URL ?? "http://localhost:8000";
 
 export interface Photo {
   id: number;
