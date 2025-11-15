@@ -1,13 +1,32 @@
 import React, { useRef, useState, useEffect } from "react";
-import { uploadPhoto, Photo, fetchAlbums } from "../api";
+import {
+  uploadPhoto,
+  uploadPhotoWithProgress,
+  Photo,
+  fetchAlbums,
+} from "../api";
 
 interface Props {
   onUploaded: (photo: Photo) => void;
+  onBatchUploaded?: (photos: Photo[]) => void;
 }
 
-export const UploadForm: React.FC<Props> = ({ onUploaded }) => {
+export const UploadForm: React.FC<Props> = ({
+  onUploaded,
+  onBatchUploaded,
+}) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [album, setAlbum] = useState("");
+  type SelectedFile = {
+    id: string;
+    file: File;
+    progress: number;
+    status: "pending" | "uploading" | "done" | "error";
+    result?: Photo;
+    error?: string;
+  };
+
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [albums, setAlbums] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlight, setHighlight] = useState<number>(-1);
@@ -31,7 +50,8 @@ export const UploadForm: React.FC<Props> = ({ onUploaded }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const file = fileInputRef.current?.files?.[0];
+    // single-file submit (legacy): if multiple files are selected, upload the first
+    const file = fileInputRef.current?.files?.[0] ?? selectedFiles[0]?.file;
     if (!file) {
       setError("Please choose a file");
       return;
@@ -42,12 +62,93 @@ export const UploadForm: React.FC<Props> = ({ onUploaded }) => {
     try {
       const photo = await uploadPhoto(file, album || undefined);
       onUploaded(photo);
+      // clear file input selection
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setSelectedFiles([]);
     } catch (err: any) {
       setError(err.message || "Upload failed");
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleFilesSelected = (files: FileList | null) => {
+    if (!files) {
+      setSelectedFiles([]);
+      return;
+    }
+    const arr = Array.from(files).map((f, i) => ({
+      id: `${Date.now()}-${i}-${f.name}`,
+      file: f,
+      progress: 0,
+      status: "pending" as const,
+    }));
+    setSelectedFiles(arr);
+  };
+
+  const uploadAll = async () => {
+    if (selectedFiles.length === 0) return;
+    setIsUploading(true);
+    setError(null);
+
+    // helper to update a selected file entry
+    const updateFile = (id: string, patch: Partial<SelectedFile>) => {
+      setSelectedFiles((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      );
+    };
+
+    const uploaded: Photo[] = [];
+
+    // create upload tasks
+    const tasks = selectedFiles.map((s) => async () => {
+      updateFile(s.id, { status: "uploading", progress: 0 });
+      try {
+        const p = await uploadPhotoWithProgress(
+          s.file,
+          album || undefined,
+          (pct) => {
+            updateFile(s.id, { progress: pct });
+          },
+        );
+        updateFile(s.id, { status: "done", progress: 100, result: p });
+        uploaded.push(p);
+        onUploaded(p);
+      } catch (err: any) {
+        console.error("Failed to upload", s.file.name, err);
+        updateFile(s.id, {
+          status: "error",
+          error: err?.message ?? String(err),
+        });
+      }
+    });
+
+    // run with concurrency limit (worker pool)
+    const concurrency = 4;
+    const runWithConcurrency = async (
+      jobs: (() => Promise<void>)[],
+      limit: number,
+    ) => {
+      let idx = 0;
+      const workers = new Array(Math.min(limit, jobs.length))
+        .fill(0)
+        .map(async () => {
+          while (true) {
+            const i = idx;
+            idx += 1;
+            if (i >= jobs.length) break;
+            await jobs[i]();
+          }
+        });
+      await Promise.all(workers);
+    };
+
+    await runWithConcurrency(tasks, concurrency);
+
+    setIsUploading(false);
+    // keep entries so user can see status; clear input selection
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (uploaded.length > 0 && onBatchUploaded) onBatchUploaded(uploaded);
   };
 
   const filtered = album
@@ -79,7 +180,13 @@ export const UploadForm: React.FC<Props> = ({ onUploaded }) => {
 
   return (
     <form onSubmit={handleSubmit} className="upload-form">
-      <input type="file" ref={fileInputRef} className="file-input" />
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="file-input"
+        multiple
+        onChange={(e) => handleFilesSelected(e.target.files)}
+      />
       <div style={{ position: "relative" }}>
         <input
           type="text"
@@ -116,9 +223,51 @@ export const UploadForm: React.FC<Props> = ({ onUploaded }) => {
           </ul>
         )}
       </div>
-      <button type="submit" disabled={isUploading} className="btn btn-primary">
-        {isUploading ? "Uploading..." : "Upload"}
-      </button>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button
+          type="submit"
+          disabled={isUploading}
+          className="btn btn-primary"
+        >
+          {isUploading ? "Uploading..." : "Upload"}
+        </button>
+        <button
+          type="button"
+          disabled={isUploading || selectedFiles.length === 0}
+          onClick={uploadAll}
+          className="btn btn-primary"
+        >
+          {isUploading
+            ? "Uploading..."
+            : `Upload ${selectedFiles.length} files`}
+        </button>
+      </div>
+
+      {selectedFiles.length > 0 && (
+        <div className="selected-files">
+          <strong>Selected files:</strong>
+          <div>
+            {selectedFiles.map((s) => (
+              <div key={s.id} className="file-item">
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div style={{ fontSize: 13 }}>{s.file.name}</div>
+                  <div className="file-status">
+                    {s.status} {s.progress ? `· ${s.progress}%` : ""}
+                  </div>
+                </div>
+                <div className="progress-bar" aria-hidden>
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${s.progress}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {error && <span className="error-text">{error}</span>}
     </form>
   );

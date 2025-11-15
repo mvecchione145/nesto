@@ -264,6 +264,51 @@ nav.app-nav a:hover {
   filter: brightness(0.98);
 }
 
+/* load more button */
+.load-more-container {
+  text-align: center;
+  margin-top: 18px;
+}
+.load-more-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* file upload progress */
+.selected-files {
+  margin-top: 8px;
+}
+.file-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+}
+.progress-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand), var(--highlight));
+  width: 0;
+  transition: width 0.2s ease;
+}
+.file-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* Modal styles */
 .modal-backdrop {
   position: fixed;

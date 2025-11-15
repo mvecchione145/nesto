@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Photo, photoImageUrl } from "../api";
+import { Photo, photoImageUrl, fetchPhotos, deletePhoto } from "../api";
 
 interface Props {
-  photos: Photo[];
+  photos?: Photo[]; // optional: if provided, component is controlled
+  album?: string;
   onDelete?: (id: number) => void;
 }
 
-export const PhotoGrid: React.FC<Props> = ({ photos, onDelete }) => {
+export const PhotoGrid: React.FC<Props> = ({ photos, album, onDelete }) => {
   const [modalPhoto, setModalPhoto] = useState<Photo | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [items, setItems] = useState<Photo[]>(photos ?? []);
+  const [loading, setLoading] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const PAGE_SIZE = 30;
+
+  const controlled = Array.isArray(photos);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -21,6 +28,35 @@ export const PhotoGrid: React.FC<Props> = ({ photos, onDelete }) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [modalOpen]);
 
+  // respond to external photos prop when controlled
+  useEffect(() => {
+    if (controlled) setItems(photos ?? []);
+  }, [photos]);
+
+  // when album changes and uncontrolled, reset and load first page
+  useEffect(() => {
+    if (controlled) return;
+    setItems([]);
+    setFinished(false);
+    loadMore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [album]);
+
+  async function loadMore() {
+    if (loading || finished) return;
+    setLoading(true);
+    try {
+      const skip = items.length;
+      const next = await fetchPhotos(album, skip, PAGE_SIZE);
+      setItems((prev) => [...prev, ...next]);
+      if (next.length < PAGE_SIZE) setFinished(true);
+    } catch (err) {
+      console.error("Failed to load photos", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const openModal = (p: Photo) => {
     setModalPhoto(p);
     setModalOpen(true);
@@ -31,10 +67,30 @@ export const PhotoGrid: React.FC<Props> = ({ photos, onDelete }) => {
     setModalPhoto(null);
   };
 
+  const handleDelete = async (p: Photo) => {
+    if (typeof onDelete === "function") {
+      try {
+        await onDelete(p.id);
+        setItems((prev) => prev.filter((x) => x.id !== p.id));
+      } catch (err) {
+        console.error(err);
+        alert("Failed to delete photo");
+      }
+    } else {
+      try {
+        await deletePhoto(p.id);
+        setItems((prev) => prev.filter((x) => x.id !== p.id));
+      } catch (err) {
+        console.error(err);
+        alert("Failed to delete photo");
+      }
+    }
+  };
+
   return (
     <div>
       <div className="photo-grid">
-        {photos.map((p) => (
+        {items.map((p) => (
           <div key={p.id} className="photo-card">
             <div className="photo-media">
               <img
@@ -67,14 +123,7 @@ export const PhotoGrid: React.FC<Props> = ({ photos, onDelete }) => {
                     <button
                       onClick={async () => {
                         if (!confirm("Delete this photo?")) return;
-                        try {
-                          if (typeof onDelete === "function") {
-                            onDelete(p.id);
-                          }
-                        } catch (err) {
-                          console.error(err);
-                          alert("Failed to delete photo");
-                        }
+                        await handleDelete(p);
                       }}
                       className="btn btn-danger"
                     >
@@ -117,6 +166,21 @@ export const PhotoGrid: React.FC<Props> = ({ photos, onDelete }) => {
           </div>
         </div>
       )}
+      {/* load more button */}
+      <div className="load-more-container">
+        {!finished && (
+          <button
+            className="load-more-btn"
+            onClick={loadMore}
+            disabled={loading}
+          >
+            {loading ? "Loading…" : "More"}
+          </button>
+        )}
+        {finished && items.length === 0 && (
+          <div className="muted">No photos found</div>
+        )}
+      </div>
     </div>
   );
 };

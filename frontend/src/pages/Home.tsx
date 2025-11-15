@@ -17,10 +17,6 @@ const Home: React.FC = () => {
         <li>Browse photos by album.</li>
         <li>Download original images.</li>
       </ul>
-
-      <p className="muted" style={{ fontSize: 13 }}>
-        Use the navigation links above to view albums or upload new photos.
-      </p>
     </div>
   );
 };
