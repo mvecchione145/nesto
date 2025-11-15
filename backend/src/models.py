@@ -16,3 +16,4 @@ class Photo(Base):
     created_at = Column(DateTime, default=dt.datetime.now(dt.timezone.utc))
     taken_at = Column(DateTime, nullable=True)  # later: fill from EXIF
     album = Column(String, nullable=True)  # simple string for now
+    thumbnail_filename = Column(String, nullable=True)

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Photo, photoImageUrl, fetchPhotos, deletePhoto } from "../api";
+import {
+  Photo,
+  photoImageUrl,
+  photoThumbUrl,
+  fetchPhotos,
+  deletePhoto,
+} from "../api";
 
 interface Props {
   photos?: Photo[]; // optional: if provided, component is controlled
@@ -94,7 +100,7 @@ export const PhotoGrid: React.FC<Props> = ({ photos, album, onDelete }) => {
           <div key={p.id} className="photo-card">
             <div className="photo-media">
               <img
-                src={photoImageUrl(p)}
+                src={photoThumbUrl(p)}
                 alt={p.original_filename}
                 className="photo-img"
               />

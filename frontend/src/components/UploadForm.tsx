@@ -50,6 +50,12 @@ export const UploadForm: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // require album
+    if (!album || album.trim() === "") {
+      setError("Please provide an album name before uploading");
+      return;
+    }
+
     // single-file submit (legacy): if multiple files are selected, upload the first
     const file = fileInputRef.current?.files?.[0] ?? selectedFiles[0]?.file;
     if (!file) {
@@ -62,6 +68,9 @@ export const UploadForm: React.FC<Props> = ({
     try {
       const photo = await uploadPhoto(file, album || undefined);
       onUploaded(photo);
+      // notify batch completion hook for single-file legacy submit so
+      // callers can uniformly wait for completion before navigating
+      if (onBatchUploaded) onBatchUploaded([photo]);
       // clear file input selection
       if (fileInputRef.current) fileInputRef.current.value = "";
       setSelectedFiles([]);
@@ -88,6 +97,10 @@ export const UploadForm: React.FC<Props> = ({
 
   const uploadAll = async () => {
     if (selectedFiles.length === 0) return;
+    if (!album || album.trim() === "") {
+      setError("Please provide an album name before uploading");
+      return;
+    }
     setIsUploading(true);
     setError(null);
 

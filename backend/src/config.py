@@ -13,9 +13,11 @@ DB_URL = os.getenv(
 
 MEDIA_ROOT = BASE_DIR / "media"
 ORIGINALS_DIR = MEDIA_ROOT / "originals"
+THUMBNAILS_DIR = MEDIA_ROOT / "thumbnails"
 
 
 # make sure dirs exist at startup (we'll call this early)
 def init_dirs():
     MEDIA_ROOT.mkdir(exist_ok=True)
     ORIGINALS_DIR.mkdir(exist_ok=True)
+    THUMBNAILS_DIR.mkdir(exist_ok=True)

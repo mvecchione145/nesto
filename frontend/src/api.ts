@@ -1,13 +1,20 @@
 // prefer a build-time Vite variable VITE_API_URL; fall back to localhost:8000 for
 // local dev. When building the frontend image in Docker Compose we pass the
 // backend address as a build-arg so this value is compiled into the bundle.
-const API_BASE =
-  (import.meta as any)?.env?.VITE_API_URL ?? "http://localhost:8000";
+// API base URL resolution:
+// 1. Vite build-time env VITE_API_BASE (preferred)
+// 2. Vite build-time env VITE_API_URL (alternate name)
+// 3. Fallback to host with port 8000 (useful for local dev when backend runs on :8000)
+const API_BASE: string =
+  ((import.meta as any)?.env?.VITE_API_BASE as string) ||
+  ((import.meta as any)?.env?.VITE_API_URL as string) ||
+  `${window.location.protocol}//${window.location.hostname}:8000`;
 
 export interface Photo {
   id: number;
   original_filename: string;
   url: string;
+  thumbnail_url?: string | null;
   created_at: string;
   album?: string | null;
 }
@@ -84,6 +91,11 @@ export function uploadPhotoWithProgress(
 export function photoImageUrl(photo: Photo): string {
   // API already returns `/media/originals/...` in `url`, just prefix backend
   return `${API_BASE}${photo.url}`;
+}
+
+export function photoThumbUrl(photo: Photo): string {
+  const path = photo.thumbnail_url ?? photo.url;
+  return `${API_BASE}${path}`;
 }
 
 export async function fetchAlbums(): Promise<string[]> {

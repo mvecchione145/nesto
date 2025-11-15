@@ -4,10 +4,6 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Allow passing the backend URL at build time so Vite can bake it into the bundle
-ARG VITE_API_URL
-ENV VITE_API_URL=${VITE_API_URL}
-
 # Install dependencies based on package-lock if present, otherwise package.json
 COPY package*.json ./
 RUN npm ci --silent

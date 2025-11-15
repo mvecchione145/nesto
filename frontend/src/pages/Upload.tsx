@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { UploadForm } from "../components/UploadForm";
 import { Photo, photoImageUrl } from "../api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const UploadPage: React.FC = () => {
   const [lastUploaded, setLastUploaded] = useState<Photo | null>(null);
+  const navigate = useNavigate();
 
   return (
     <div>
@@ -12,7 +13,16 @@ const UploadPage: React.FC = () => {
 
       <UploadForm
         onUploaded={(p) => {
+          // do not redirect here — wait for batch completion to avoid
+          // navigating away before all parallel uploads finish
           setLastUploaded(p);
+        }}
+        onBatchUploaded={(arr) => {
+          if (arr.length > 0 && arr[0].album) {
+            navigate(`/albums/${encodeURIComponent(arr[0].album as string)}`);
+            return;
+          }
+          if (arr.length > 0) setLastUploaded(arr[arr.length - 1]);
         }}
       />
 

@@ -27,7 +27,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/nesto_db
       BASE_DIR: /app/media
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
     # Persist uploaded media between container restarts. Assumes backend Dockerfile
     # uses /app as WORKDIR and media is stored at /app/media (matches backend/config.py).
     volumes:
@@ -36,16 +36,11 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        VITE_API_URL: "http://localhost:8000"
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "8080:80"
-    environment:
-      # Example: frontend can read VITE_API_URL at build/runtime if needed
-      - VITE_API_URL=http://localhost:8000
+      - "0.0.0.0:80:80"
 
 volumes:
   pgdata:
