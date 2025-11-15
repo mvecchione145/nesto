@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nesto_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # backend/config.py reads DATABASE_URL from the env
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/nesto_db
+      BASE_DIR: /app/media
+    ports:
+      - "8000:8000"
+    # Persist uploaded media between container restarts. Assumes backend Dockerfile
+    # uses /app as WORKDIR and media is stored at /app/media (matches backend/config.py).
+    volumes:
+      - ./backend/media:/app/media
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: "http://localhost:8000"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    environment:
+      # Example: frontend can read VITE_API_URL at build/runtime if needed
+      - VITE_API_URL=http://localhost:8000
+
+volumes:
+  pgdata:
+    driver: local

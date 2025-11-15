@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+gunicorn
+SQLAlchemy
+pydantic
+python-multipart
+alembic
+Pillow
+psycopg2-binary

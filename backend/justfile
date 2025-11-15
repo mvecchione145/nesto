@@ -1,0 +1,12 @@
+PYTHONVERSION := `cat .python-version 2>/dev/null`
+
+install:
+	@uv python install {{ PYTHONVERSION }}
+	@uv venv --python {{ PYTHONVERSION }}
+	@uv pip install --upgrade pip
+	@uv pip install -r requirements.txt
+	@uv pip install -r requirements-dev.txt
+
+format:
+	@uv run black .
+	@uv run isort . --profile black
