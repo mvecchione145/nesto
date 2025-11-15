@@ -56,7 +56,15 @@ export const UploadForm: React.FC<Props> = ({
       return;
     }
 
-    // single-file submit (legacy): if multiple files are selected, upload the first
+    // If multiple files are selected, delegate to uploadAll which handles
+    // parallel uploads and per-file progress. This keeps behavior consistent
+    // whether the user pressed Enter or clicked the button.
+    if (selectedFiles.length > 0) {
+      await uploadAll();
+      return;
+    }
+
+    // single-file submit (legacy): upload the first file if present
     const file = fileInputRef.current?.files?.[0] ?? selectedFiles[0]?.file;
     if (!file) {
       setError("Please choose a file");
@@ -68,8 +76,7 @@ export const UploadForm: React.FC<Props> = ({
     try {
       const photo = await uploadPhoto(file, album || undefined);
       onUploaded(photo);
-      // notify batch completion hook for single-file legacy submit so
-      // callers can uniformly wait for completion before navigating
+      // notify batch completion hook for uniform completion handling
       if (onBatchUploaded) onBatchUploaded([photo]);
       // clear file input selection
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -203,7 +210,7 @@ export const UploadForm: React.FC<Props> = ({
       <div style={{ position: "relative" }}>
         <input
           type="text"
-          placeholder="Album (optional)"
+          placeholder="Album"
           value={album}
           onChange={(e) => {
             setAlbum(e.target.value);
@@ -239,20 +246,16 @@ export const UploadForm: React.FC<Props> = ({
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <button
           type="submit"
-          disabled={isUploading}
-          className="btn btn-primary"
-        >
-          {isUploading ? "Uploading..." : "Upload"}
-        </button>
-        <button
-          type="button"
-          disabled={isUploading || selectedFiles.length === 0}
-          onClick={uploadAll}
+          disabled={
+            isUploading || album.trim() === "" || selectedFiles.length === 0
+          }
           className="btn btn-primary"
         >
           {isUploading
             ? "Uploading..."
-            : `Upload ${selectedFiles.length} files`}
+            : selectedFiles.length > 0
+              ? `Upload ${selectedFiles.length} files`
+              : "Upload"}
         </button>
       </div>
 
